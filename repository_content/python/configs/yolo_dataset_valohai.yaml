@@ -1,0 +1,17 @@
+path: /valohai/inputs/data/yolo_dataset/
+train: images/train
+val: images/val
+test: [images/test_real, images/test_id, images/test_ood] # For now, we do not have test_ood
+
+
+names:
+  0: FERRY
+  1: BUOY
+  2: VESSEL_SHIP
+  3: SPEED_BOAT
+  4: BOAT
+  5: KAYAK
+  6: SAIL_BOAT
+  7: SWIMMING_PERSON
+  8: FLYING_BIRD_PLANE
+  9: OTHER

@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ALSLib"
+dependencies = [
+  "opencv-python",
+  "pillow",
+  "boto3",
+  "numpy",
+  "scipy",
+  "matplotlib",
+  "PyQt5",
+  "open3d",
+  "pyopengl",
+  "av"
+]
+
+version = "1.2.2"
+authors = [
+  { name="AILiveSim Oy" }, { email="support@ailivesim.com" },
+  { name="Joonas Valamaki", email="joonas@ailivesim.com" },
+  { name="Simon Liimatainen", email="simon@ailivesim.com" },
+]
+description = "AILiveSim scripts"
+readme = "README.md"
+requires-python = ">=3.10, <3.13"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: Other/Proprietary License",
+    "Operating System :: OS Independent",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest"
+]
+
+[tool.setuptools.package-data]
+ALSLib = ["*.pyd", "*.so", "ALSRadarVisSliderStyle", "ALSRadarVisualisationConfig.json"]
+
+[project.urls]
+Homepage = "https://ailivesim.com"
+Issues = "https://ailivesim.com"

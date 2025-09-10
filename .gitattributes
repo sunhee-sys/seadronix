@@ -1,0 +1,6 @@
+*.json filter=lfs diff=lfs merge=lfs -text
+*.zip filter=lfs diff=lfs merge=lfs -text
+config_files_mock.zip filter=lfs diff=lfs merge=lfs -text
+seastate_embeddings.json filter=lfs diff=lfs merge=lfs -text
+singapore_maritime_dataset.zip filter=lfs diff=lfs merge=lfs -text
+weather_embeddings.json filter=lfs diff=lfs merge=lfs -text
