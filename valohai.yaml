@@ -1,0 +1,692 @@
+- step:
+    name: scenario-matching
+    image: 124713332530.dkr.ecr.eu-north-1.amazonaws.com/dev/at:scenario-matching-latest
+    command:
+        - scenario-matching {parameters}
+    parameters:
+        - name: descriptions-path
+          default: /valohai/inputs/descriptions/text_descriptions_scenarios.zip
+          type: string
+        - name: data-path
+          default: /valohai/inputs/data/coco_dataset.zip
+          type: string
+        - name: batch-size
+          default: 128
+          type: integer
+        - name: threshold
+          default: 0
+          type: float
+        - name: output-path
+          default: /valohai/outputs/scenario_matching_results.json
+          type: string
+    environment: ailivesim-aws-eu-north-1-g4dn-xlarge
+    inputs:
+        - name: data
+          default: s3://valohai-data-valohaiworkersstack/data/coco_dataset.zip
+        - name: descriptions
+          default: s3://valohai-data-valohaiworkersstack/data/text_descriptions_scenarios.zip
+          filename: text_descriptions_scenarios.zip
+- step:
+    name: merge-matching
+    image: 124713332530.dkr.ecr.eu-north-1.amazonaws.com/dev/at:mergematching-latest
+    command:
+        - python python/merge_matching.py {parameters}
+    parameters:
+        - name: data-path
+          default: /valohai/inputs/data/coco_dataset.zip
+          type: string
+        - name: scenario-matching
+          default: /valohai/inputs/scenario_matching/scenario_matching_results.json
+          type: string
+        - name: weather-matching
+          default: /valohai/inputs/weather_matching/weather_matching_results.json
+          type: string
+        - name: sea-state-matching
+          default: /valohai/inputs/sea_state_matching/sea_state_matching_results.json
+          type: string
+        - name: zip
+          default: /valohai/outputs/
+          type: string
+    environment: ailivesim-aws-eu-north-1-c5-2xlarge
+    inputs:
+        - name: data
+          filename: coco_dataset.zip
+        - name: scenario_matching
+          filename: scenario_matching_results.json
+        - name: weather_matching
+          filename: weather_matching_results.json
+        - name: sea_state_matching
+          filename: sea_state_matching_results.json
+- step:
+    name: ails-dataset-to-coco
+    image: 124713332530.dkr.ecr.eu-north-1.amazonaws.com/dev/at:ailstococo-latest
+    command:
+        - python python/data_processing/ails_to_coco_format.py {parameters}
+    parameters:
+        - name: data-path
+          default: /valohai/inputs/data/ails_dataset.zip
+          type: string
+        - name: image-size
+          default: 640
+          type: integer
+        - name: output-path
+          default: coco_dataset
+          type: string
+        - name: version
+          default: "0.1"
+          type: string
+        - name: annotations
+          default: true
+          type: flag
+        - name: images
+          default: true
+          type: flag
+        - name: zip
+          default: /valohai/outputs/
+          type: string
+        - name: previous-data-path
+          default: ""
+          type: string
+          optional: true
+    environment: ailivesim-aws-eu-north-1-c5-2xlarge
+    inputs:
+        - name: data
+          default: s3://valohai-data-valohaiworkersstack/data/ails_dataset.zip
+          filename: ails_dataset.zip
+        - name: prevdata
+          default: ""
+          optional: true
+          filename: coco_dataset.zip
+- step:
+    name: data-generation-postprocessing
+    image: 124713332530.dkr.ecr.eu-north-1.amazonaws.com/dev/at:data-generation-postprocessing-latest
+    command:
+        - data-generation-postprocessing {parameters}
+    parameters:
+        - name: data-path
+          default: /valohai/inputs/data/ails_dataset.zip
+          type: string
+        - name: threshold
+          default: 0.01
+          type: float
+        - name: output-path
+          default: /valohai/outputs/
+          type: string
+    environment: ailivesim-aws-eu-north-1-c5-2xlarge
+    inputs:
+        - name: data
+          default: s3://valohai-data-valohaiworkersstack/data/ails_dataset.zip
+          filename: ails_dataset.zip
+- step:
+    name: coverage-analysis
+    image: 124713332530.dkr.ecr.eu-north-1.amazonaws.com/dev/at:coverage-analysis-latest
+    command:
+        - coverage-analysis {parameters}
+    parameters:
+        - name: path
+          default: "/valohai/inputs/data/coco_dataset.zip"
+          type: string
+        - name: out-of-distribution
+          default: true
+          type: flag
+        - name: output_path
+          default: /valohai/outputs/coverage_analysis_results.json
+          type: string
+    environment: ailivesim-aws-eu-north-1-g4dn-xlarge
+    inputs:
+      - name: data
+        default: s3://valohai-data-valohaiworkersstack/data/coco_dataset.zip
+        filename: coco_dataset.zip
+- step:
+    name: data-generation
+    image: 124713332530.dkr.ecr.eu-north-1.amazonaws.com/dev/at:data-generation-latest
+    command:
+        - data-generation {parameters}
+    parameters:
+        - name: configs-path
+          default: /valohai/inputs/configurations/config_files_mock.zip
+          type: string
+        - name: coverage-analysis-results
+          default: /valohai/inputs/coverage_analysis_results/coverage_analysis_results.json
+          type: string
+        - name: token
+          default: None
+          type: string
+        - name: test-suite-name
+          default: test_suite_name
+          type: string
+        - name: instances
+          default: 1
+          type: integer
+        - name: combination-limit
+          default: 1
+          type: integer
+        - name: region
+          default: eu-central-1
+          type: string
+        - name: output-path
+          default: /valohai/outputs/ails_dataset
+          type: string
+    environment: ailivesim-aws-eu-north-1-c5-2xlarge
+    inputs:
+      - name: configurations
+        default: s3://valohai-data-valohaiworkersstack/data/config_files_mock.zip
+      - name: coverage_analysis_results
+        filename: coverage_analysis_results.json
+      - name: test_manager_script
+        default: s3://valohai-data-valohaiworkersstack/data/DataGenerationScript.py
+- step:
+    name: data-generation-2
+    image: 124713332530.dkr.ecr.eu-north-1.amazonaws.com/dev/at:data-generation-latest
+    command:
+        - pip install sim_local-0.0.4-py3-none-any.whl
+        - data-generation {parameters}
+    parameters:
+        - name: mock-data
+          default: /valohai/inputs/data/ml_dataset_test.zip
+          type: string
+        - name: configs-path
+          default: /valohai/inputs/configurations/configs_files_mock.zip
+          type: string
+        - name: coverage-analysis-results
+          default: /valohai/inputs/coverage_analysis_results.json
+          type: string
+        - name: test-manager-script
+          default: /valohai/inputs/test_manager_script/DataGenerationScript.py
+          type: string
+        - name: user
+          default: mltest
+          type: string
+        - name: aws-access-key
+          default: mltest
+          type: string
+        - name: aws-secret-access
+          default: mltest
+          type: string
+        - name: region
+          default: mltest
+          type: string
+        - name: experiment-name
+          default: test
+          type: string
+        - name: output-path
+          default: /valohai/outputs/
+          type: string
+    environment: ailivesim-aws-eu-north-1-c5-2xlarge
+    inputs:
+      - name: data
+        default: s3://valohai-data-valohaiworkersstack/data/ml_dataset_test.zip
+        filename: ml_dataset_test.zip
+      - name: configurations
+        default: s3://valohai-data-valohaiworkersstack/data/configs_files_mock.zip
+        filename: configs_files_mock.zip
+      - name: coverage_analysis_results
+        default: s3://valohai-data-valohaiworkersstack/data/domain_analysis_results.json
+        filename: coverage_analysis_results.json
+      - name: test_manager_script
+        default: s3://valohai-data-valohaiworkersstack/data/DataGenerationScript.py
+        filename: DataGenerationScript.py
+- step:
+    name: smd-dataset-to-coco
+    image: 124713332530.dkr.ecr.eu-north-1.amazonaws.com/dev/at:smdtococo-latest
+    command:
+        - python python/data_processing/singapore_maritime_to_coco_format.py {parameters}
+    parameters:
+        - name: data-path
+          default: /valohai/inputs/data/singapore_maritime_dataset.zip
+          type: string
+        - name: image-size
+          default: 640
+          type: integer
+        - name: output-path
+          default: coco_dataset
+          type: string
+        - name: version
+          default: "0.1"
+          type: string
+        - name: annotations
+          default: true
+          type: flag
+        - name: images
+          default: true
+          type: flag
+        - name: zip
+          default: /valohai/outputs/
+          type: string
+    environment: ailivesim-aws-eu-north-1-c5-2xlarge
+    inputs:
+        - name: data
+          default: s3://valohai-data-valohaiworkersstack/data/singapore_maritime_dataset.zip
+          filename: singapore_maritime_dataset.zip
+- step:
+    name: coco-splitting
+    image: 124713332530.dkr.ecr.eu-north-1.amazonaws.com/dev/at:cocosplit-latest
+    command:
+        - python python/data_processing/split_coco.py {parameters}
+    parameters:
+        - name: data-path
+          default: /valohai/inputs/data/coco_dataset.zip
+          type: string
+        - name: train_val_test_ratio
+          default: [0.8,0.1,0.1]
+          multiple: separate
+          multiple-separator: ","
+          type: string
+        - name: output-path
+          default: coco_dataset
+          type: string
+        - name: zip
+          default: /valohai/outputs/
+          type: string
+    environment: ailivesim-aws-eu-north-1-c5-2xlarge
+    inputs:
+        - name: data
+          default: s3://valohai-data-valohaiworkersstack/data/coco_dataset.zip
+          filename: coco_dataset.zip
+- step:
+    name: merge-coco-datasets
+    image: 124713332530.dkr.ecr.eu-north-1.amazonaws.com/dev/at:mergecoco-latest
+    command:
+        - python python/data_processing/merge_coco_datasets.py {parameters}
+    parameters:
+        - name: data-path
+          default: ["/valohai/inputs/ails_data/coco_dataset.zip", "/valohai/inputs/smd_data/coco_dataset.zip"]
+          multiple: separate
+          multiple-separator: ","
+          type: string
+        - name: output-path
+          default: coco_dataset
+          type: string
+        - name: zip
+          default: /valohai/outputs/
+          type: string
+    environment: ailivesim-aws-eu-north-1-c5-2xlarge
+    inputs:
+        - name: ails_data
+          filename: coco_dataset.zip
+        - name: smd_data
+          filename: coco_dataset.zip
+- step:
+    name: coco-dataset-to-yolo
+    image: 124713332530.dkr.ecr.eu-north-1.amazonaws.com/dev/at:cocotoyolo-latest
+    command:
+        - python python/data_processing/JSON2YOLO/general_json2yolo.py {parameters}
+    parameters:
+        - name: source
+          default: COCO
+          type: string
+        - name: data-path
+          default: /valohai/inputs/data/coco_dataset.zip
+          type: string
+        - name: output-path
+          default: yolo_dataset
+          type: string
+        - name: zip
+          default: /valohai/outputs/
+          type: string
+    environment: ailivesim-aws-eu-north-1-c5-2xlarge
+    inputs:
+        - name: data
+          filename: coco_dataset.zip
+- step:
+    name: train
+    image: docker.io/ultralytics/ultralytics:8.3.74-python
+    command:
+        - pip install valohai-utils watchdog
+        - nohup python python/valohai_watch.py &
+        - python python/train.py {parameters}
+    parameters:
+        - name: data-path
+          default: /valohai/inputs/data/yolo_dataset.zip
+          type: string
+        - name: data-config-path
+          default: python/configs/yolo_dataset_valohai.yaml
+          type: string
+        - name: model-path
+          default: models/weights/yolo/yolo11n.pt
+          type: string
+        - name: epochs
+          default: 10
+          type: integer
+        - name: image-size
+          default: 640
+          type: integer
+        - name: format
+          default: ""
+          type: string
+          optional: true
+        - name: output-path
+          default: /valohai/outputs/
+          type: string
+    environment: ailivesim-aws-eu-north-1-c5-2xlarge
+    inputs:
+        - name: data
+          filename: yolo_dataset.zip
+- step:
+    name: test
+    image: docker.io/ultralytics/ultralytics:8.3.74-python
+    command:
+        - pip install valohai-utils watchdog
+        - python python/test.py {parameters}
+    parameters:
+        - name: data-path
+          default: /valohai/inputs/data/yolo_dataset.zip
+          type: string
+        - name: data-config-path
+          default: python/configs/yolo_dataset_valohai.yaml
+          type: string
+        - name: model-path
+          default: /valohai/inputs/model/best.pt
+          type: string
+        - name: output-path
+          default: /valohai/outputs
+          type: string
+    environment: ailivesim-aws-eu-north-1-m5-4xlarge
+    inputs:
+        - name: data
+          filename: yolo_dataset.zip
+        - name: model
+          filename: best.pt
+- step:
+    name: model-failure-analysis
+    image: 124713332530.dkr.ecr.eu-north-1.amazonaws.com/dev/at:model-failure-analysis-latest
+    command:
+        - model-failure-analysis {parameters}
+    parameters:
+        - name: data-path
+          default: /valohai/inputs/data/coco_dataset.zip
+          type: string
+        - name: id-results-path
+          default: /valohai/inputs/id_results/test_id_results.json
+          type: string
+        - name: ood-results-path
+          default: /valohai/inputs/ood_results/test_ood_results.json
+          type: string
+        - name: real-results-path
+          default: /valohai/inputs/real_results/test_real_results.json
+          type: string
+        - name: mode
+          default: mean
+          type: string
+        - name: nb-files
+          default: 10
+          type: integer
+        - name: output-path
+          default: /valohai/outputs/model_failure_analysis_results.json
+          type: string
+    environment: ailivesim-aws-eu-north-1-c5-2xlarge
+    inputs:
+        - name: data
+          filename: coco_dataset.zip
+        - name: id_results
+          filename: test_id_results.json
+        - name: ood_results
+          filename: test_ood_results.json
+        - name: real_results
+          filename: test_real_results.json
+- step:
+    name: weather-matching
+    image: 124713332530.dkr.ecr.eu-north-1.amazonaws.com/dev/at:weather-matching-latest
+    command:
+        - weather-matching {parameters}
+    parameters:
+        - name: data-path
+          default: /valohai/inputs/input_data/coco_dataset.zip
+          type: string
+        - name: embeddings-path
+          default: /valohai/inputs/database_embeddings/image_embeddings.json
+          type: string
+        - name: output-path
+          default: /valohai/outputs/weather_matching_results.json
+          type: string
+    environment: ailivesim-aws-eu-north-1-g4dn-xlarge
+    inputs:
+        - name: input_data
+          default: s3://valohai-data-valohaiworkersstack/weather_matching/usert_test_inputs/coco_dataset_intenet_weather.zip
+          filename: coco_dataset.zip
+        - name: database_embeddings
+          default: s3://valohai-data-valohaiworkersstack/weather_matching/weather_embeddings.json
+          filename: image_embeddings.json
+- step:
+    name: data-selection
+    image: 124713332530.dkr.ecr.eu-north-1.amazonaws.com/dev/at:data-selection-latest
+    command:
+        - data-selection {parameters}
+    parameters:
+        - name: path
+          default: "/valohai/inputs/data/coco_dataset.zip"
+          type: string
+        - name: batch-size
+          default: 8
+          type: integer
+        - name: nb-epochs
+          default: 1
+          type: integer
+    environment: ailivesim-aws-eu-north-1-g4dn-xlarge
+    inputs:
+      - name: data
+        default: s3://valohai-data-valohaiworkersstack/data/coco_dataset.zip
+        filename: coco_dataset.zip
+- step:
+    name: seastate-matching
+    image: 124713332530.dkr.ecr.eu-north-1.amazonaws.com/dev/at:seastate-matching-latest
+    command:
+        - seastate-matching {parameters}
+    parameters:
+        - name: data-path
+          default: /valohai/inputs/input_data/coco_dataset.zip
+          type: string
+        - name: embeddings-path
+          default: /valohai/inputs/database_embeddings/image_embeddings.json
+          type: string
+        - name: output-path
+          default: /valohai/outputs/seastate_matching_results.json
+          type: string
+    environment: ailivesim-aws-eu-north-1-g4dn-xlarge
+    inputs:
+        - name: input_data
+          default: s3://valohai-data-valohaiworkersstack/weather_matching/usert_test_inputs/input_image_test.zip
+          filename: coco_dataset.zip
+        - name: database_embeddings
+          default: s3://valohai-data-valohaiworkersstack/seastate-matching/image_embeddings.json
+          filename: image_embeddings.json
+- step:
+    name: controller
+    image: 124713332530.dkr.ecr.eu-north-1.amazonaws.com/dev/at:controller-latest
+    command:
+        - python python/controller/main.py {parameters}
+    parameters:
+        - name: number_of_loop
+          default: 10
+          type: integer
+        - name: datasetanalysis_pipeline_json
+          type: string
+        - name: trainingloop_pipeline_json
+          type: string
+    environment: ailivesim-aws-eu-north-1-c5-xlarge
+- step:
+    name: ails-dataset-to-coco-2
+    image: 124713332530.dkr.ecr.eu-north-1.amazonaws.com/dev/at:ailstococo-latest
+    command:
+        - python python/data_processing/ails_to_coco_format.py {parameters}
+    parameters:
+        - name: data-path
+          default: /valohai/inputs/data/ml_dataset_test.zip
+          type: string
+        - name: image-size
+          default: 640
+          type: integer
+        - name: output-path
+          default: coco_dataset
+          type: string
+        - name: version
+          default: "0.1"
+          type: string
+        - name: annotations
+          default: true
+          type: flag
+        - name: images
+          default: true
+          type: flag
+        - name: zip
+          default: /valohai/outputs/
+          type: string
+        - name: previous-data-path
+          default: /valohai/inputs/prevdata/coco_dataset.zip
+          type: string
+    environment: ailivesim-aws-eu-north-1-c5-2xlarge
+    inputs:
+        - name: data
+          default: s3://valohai-data-valohaiworkersstack/data/ml_dataset_test.zip
+          filename: ml_dataset_test.zip
+        - name: prevdata
+          default: ""
+          optional: true
+          filename: coco_dataset.zip
+- pipeline:
+    name: atp-pipeline
+    nodes:
+      - name: smd-dataset-to-coco-format
+        type: execution
+        step: smd-dataset-to-coco
+      - name: scenario-matching
+        type: execution
+        step: scenario-matching
+      - name: weather-matching
+        type: execution
+        step: weather-matching
+      - name: seastate-matching
+        type: execution
+        step: seastate-matching
+      - name: merge-matching
+        type: execution
+        step: merge-matching
+      - name: coverage-analysis
+        type: execution
+        step: coverage-analysis
+      - name: data-generation
+        type: execution
+        step: data-generation
+      - name: data-generation-postprocessing
+        type: execution
+        step: data-generation-postprocessing
+      - name: ails-dataset-to-coco-format
+        type: execution
+        step: ails-dataset-to-coco
+      - name: merge-coco-datasets
+        type: execution
+        step: merge-coco-datasets
+      - name: data-selection
+        type: execution
+        step: data-selection
+      - name: coco-splitting
+        type: execution
+        step: coco-splitting
+      - name: coco-to-yolo-format
+        type: execution
+        step: coco-dataset-to-yolo
+      - name: train
+        type: execution
+        step: train
+      - name: test
+        type: execution
+        step: test
+      - name: model-failure-analysis
+        type: execution
+        step: model-failure-analysis
+    edges:
+      - [smd-dataset-to-coco-format.output.coco_dataset.zip, scenario-matching.input.data]
+      - [smd-dataset-to-coco-format.output.coco_dataset.zip, weather-matching.input.input_data]
+      - [smd-dataset-to-coco-format.output.coco_dataset.zip, seastate-matching.input.input_data]
+      - [smd-dataset-to-coco-format.output.coco_dataset.zip, merge-matching.input.data]
+      - [scenario-matching.output.scenario_matching_results.json, merge-matching.input.scenario_matching]
+      - [weather-matching.output.weather_matching_results.json, merge-matching.input.weather_matching]
+      - [seastate-matching.output.seastate_matching_results.json, merge-matching.input.sea_state_matching]
+      - [merge-matching.output.coco_dataset.zip, coverage-analysis.input.data]
+      - [coverage-analysis.output.coverage_analysis_results.json, data-generation.input.coverage_analysis_results]
+      - [data-generation.output.ails_dataset.zip, data-generation-postprocessing.input.data]
+      - [data-generation-postprocessing.output.ails_dataset.zip, ails-dataset-to-coco-format.input.data]
+      - [smd-dataset-to-coco-format.output.coco_dataset.zip, merge-coco-datasets.input.smd_data]
+      - [ails-dataset-to-coco-format.output.coco_dataset.zip, merge-coco-datasets.input.ails_data]
+      - [merge-coco-datasets.output.coco_dataset.zip, data-selection.input.data]
+      - [data-selection.output.coco_dataset.zip, coco-splitting.input.data]
+      - [coco-splitting.output.coco_dataset.zip, coco-to-yolo-format.input.data]
+      - [coco-to-yolo-format.output.yolo_dataset.zip, train.input.data]
+      - [coco-to-yolo-format.output.yolo_dataset.zip, test.input.data]
+      - [train.output.best.pt, test.input.model]
+      - [merge-coco-datasets.output.coco_dataset.zip, model-failure-analysis.input.data]
+      - [test.output.test_id_results.json, model-failure-analysis.input.id_results]
+      - [test.output.test_ood_results.json, model-failure-analysis.input.ood_results]
+      - [test.output.test_real_results.json, model-failure-analysis.input.real_results]
+
+- pipeline:
+    name: chianed-atp-pipeline
+    nodes:
+      - name: smd-dataset-to-coco-format
+        type: execution
+        step: smd-dataset-to-coco
+      - name: scenario-matching
+        type: execution
+        step: scenario-matching
+      - name: weather-matching
+        type: execution
+        step: weather-matching
+      - name: seastate-matching
+        type: execution
+        step: seastate-matching
+      - name: merge-matching
+        type: execution
+        step: merge-matching
+      - name: coverage-analysis
+        type: execution
+        step: coverage-analysis
+      - name: data-generation
+        type: execution
+        step: data-generation
+      - name: ails-dataset-to-coco-format
+        type: execution
+        step: ails-dataset-to-coco
+      - name: merge-coco-datasets
+        type: execution
+        step: merge-coco-datasets
+      - name: data-selection
+        type: execution
+        step: data-selection
+      - name: coco-splitting
+        type: execution
+        step: coco-splitting
+      - name: coco-to-yolo-format
+        type: execution
+        step: coco-dataset-to-yolo
+      - name: train
+        type: execution
+        step: train
+      - name: test
+        type: execution
+        step: test
+      - name: model-failure-analysis
+        type: execution
+        step: model-failure-analysis
+    edges:
+      - [smd-dataset-to-coco-format.output.coco_dataset.zip, scenario-matching.input.data]
+      - [smd-dataset-to-coco-format.output.coco_dataset.zip, weather-matching.input.input_data]
+      - [smd-dataset-to-coco-format.output.coco_dataset.zip, seastate-matching.input.input_data]
+      - [smd-dataset-to-coco-format.output.coco_dataset.zip, merge-matching.input.data]
+      - [scenario-matching.output.scenario_matching_results.json, merge-matching.input.scenario_matching]
+      - [weather-matching.output.weather_matching_results.json, merge-matching.input.weather_matching]
+      - [seastate-matching.output.seastate_matching_results.json, merge-matching.input.sea_state_matching]
+      - [merge-matching.output.coco_dataset.zip, coverage-analysis.input.data]
+      - [coverage-analysis.output.coverage_analysis_results.json, data-generation.input.coverage_analysis_results]
+      - [data-generation.output.ails_dataset.zip, ails-dataset-to-coco-format.input.data]
+      - [smd-dataset-to-coco-format.output.coco_dataset.zip, merge-coco-datasets.input.smd_data]
+      - [ails-dataset-to-coco-format.output.coco_dataset.zip, merge-coco-datasets.input.ails_data]
+      - [merge-coco-datasets.output.coco_dataset.zip, data-selection.input.data]
+      - [data-selection.output.coco_dataset.zip, coco-splitting.input.data]
+      - [coco-splitting.output.coco_dataset.zip, coco-to-yolo-format.input.data]
+      - [coco-to-yolo-format.output.yolo_dataset.zip, train.input.data]
+      - [coco-to-yolo-format.output.yolo_dataset.zip, test.input.data]
+      - [train.output.best.pt, test.input.model]
+      - [merge-coco-datasets.output.coco_dataset.zip, model-failure-analysis.input.data]
+      - [test.output.test_id_results.json, model-failure-analysis.input.id_results]
+      - [test.output.test_ood_results.json, model-failure-analysis.input.ood_results]
+      - [test.output.test_real_results.json, model-failure-analysis.input.real_results]
